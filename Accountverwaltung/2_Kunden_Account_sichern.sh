@@ -9,7 +9,7 @@ fi
 acc_kunden="/storage/emulated/0/MonopolyGo/Accounts/Kunden/"
 acc_datapath="/data/data/com.scopely.monopolygo/files/DiskBasedCacheDirectory/WithBuddies.Services.User.0Production.dat"
 acc_infos="/data/data/com.scopely.monopolygo/shared_prefs/com.scopely.monopolygo.v2.playerprefs.xml"
-acc_kunden_infos="/storage/emulated/0/MonopolyGo/Accounts/Kunden/Kundeninfos.json"
+acc_kunden_infos="/storage/emulated/0/MonopolyGo/Accounts/Kunden/Kundeninfos.csv"
 
 extract_userid_from_link() {
     local url="$1"
@@ -39,10 +39,12 @@ if [ -z "$userid" ]; then
 fi
 
 if [ -f "$acc_kunden_infos" ]; then
-    if jq -e --arg kid "$kundenid" --arg uid "$userid" '.[] | select(.kundenid==$kid or (.userid==$uid and $uid!=""))' "$acc_kunden_infos" >/dev/null; then
+    if awk -F',' -v kid="$kundenid" -v uid="$userid" 'NR>1 && ($1==kid || ($7==uid && uid!="")) {exit 0} END {exit 1}' "$acc_kunden_infos"; then
         echo "Eintrag mit gleicher Kunden ID oder UserId existiert bereits." >&2
         exit 1
     fi
+else
+    echo "KundenID,Nutzername,Passwort,AuTok,Freundschaftslink,Code,UserID,Notiz" > "$acc_kunden_infos"
 fi
 
 if [[ $save_files =~ ^[Jj]$ ]]; then
@@ -54,23 +56,8 @@ if [[ $save_files =~ ^[Jj]$ ]]; then
     fi
 fi
 
-entry=$(jq -n \
-    --arg kid "$kundenid" \
-    --arg nu "$nutzername" \
-    --arg pa "$pass" \
-    --arg au "$autok" \
-    --arg fl "$freundschaftslink" \
-    --arg co "$code" \
-    --arg uid "$userid" \
-    --arg no "$notiz" \
-    '{kundenid:$kid, nutzername:$nu, pass:$pa, autok:$au, freundschaftslink:$fl, code:$co, userid:($uid // empty), notiz:$no}')
-
-if [ -f "$acc_kunden_infos" ]; then
-    tmp=$(mktemp)
-    jq --argjson e "$entry" '. + [$e]' "$acc_kunden_infos" > "$tmp" && mv "$tmp" "$acc_kunden_infos"
-else
-    echo "[$entry]" > "$acc_kunden_infos"
-fi
+printf '%s,"%s","%s","%s","%s","%s","%s","%s"\n' \
+    "$kundenid" "$nutzername" "$pass" "$autok" "$freundschaftslink" "$code" "$userid" "$notiz" >> "$acc_kunden_infos"
 
 echo "Kundenaccount-Daten gespeichert."
 if command -v termux-toast >/dev/null; then

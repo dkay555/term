@@ -8,7 +8,7 @@ Die Skripte automatisieren wiederkehrende Aufgaben wie Backup, Restore und Bearb
 ## Nutzung
 1. Klone oder kopiere das Repository auf dein Android-Gerät.
 2. Führe `Accountverwaltung/1_Account_wiederherstellen.sh` mit Root-Rechten aus, um einen Account einzuspielen.
-3. Mit `Accountverwaltung/2_Eigener_Account_sichern.sh` sicherst du den aktuell aktiven Account. Das Skript fragt nach einer internen ID und optionaler Notiz, liest deine UserID aus und erstellt einen Einladungslink. Die Dateien landen unter `Accounts/Eigene/<ID>/`, Metadaten in `Accounts/Eigene/Accountinfos.json`.
+3. Mit `Accountverwaltung/2_Eigener_Account_sichern.sh` sicherst du den aktuell aktiven Account. Das Skript fragt nach einer internen ID und optionaler Notiz, liest deine UserID aus und erstellt einen Einladungslink. Die Dateien landen unter `Accounts/Eigene/<ID>/`, Metadaten in `Accounts/Eigene/Accountinfos.csv`.
 4. `Accountverwaltung/2_Kunden_Account_sichern.sh` speichert Kundenaccounts. Dabei wird aus dem angegebenen Freundschaftslink die UserID ermittelt. Bei Bedarf kopiert das Skript auch die Accountdateien nach `Accounts/Kunden/<KundenID>/`.
 5. Aktualisiere gespeicherte Infos mit `Accountverwaltung/3_Infos_bearbeiten.sh`. Es listet alle Einträge und lässt sie ändern.
 6. `Accountverwaltung/4_Kopiere_Links.sh` kopiert einen oder mehrere Einladungslinks deiner gesicherten Accounts in die Zwischenablage.

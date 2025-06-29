@@ -6,7 +6,7 @@ if command -v termux-toast >/dev/null; then
 fi
 
 base_dir="/storage/emulated/0/MonopolyGo/Partnerevents/"
-acc_infos="/storage/emulated/0/MonopolyGo/Accounts/Eigene/Accountinfos.json"
+acc_infos="/storage/emulated/0/MonopolyGo/Accounts/Eigene/Accountinfos.csv"
 
 init_event_dir() {
     local dir="$1"
@@ -57,7 +57,7 @@ fi
 
 eigene_csv="${event_dir}Eigene Accounts.csv"
 
-mapfile -t interneids < <(jq -r '.[].interneid' "$acc_infos")
+mapfile -t interneids < <(tail -n +2 "$acc_infos" | cut -d',' -f1)
 
 if [ ${#interneids[@]} -eq 0 ]; then
     echo "Keine eigenen Accounts vorhanden." >&2
@@ -75,7 +75,7 @@ for num in $selection; do
     idx=$((num-1))
     if [ $idx -ge 0 ] && [ $idx -lt ${#interneids[@]} ]; then
         name="${interneids[$idx]}"
-        shortlink=$(jq -r --arg iid "$name" '.[] | select(.interneid==$iid) | .shortlink' "$acc_infos")
+        shortlink=$(awk -F',' -v iid="$name" '$1==iid {print $4}' "$acc_infos")
         if ! grep -q "^${name}," "$eigene_csv" 2>/dev/null; then
             echo "$name,$shortlink,4" >> "$eigene_csv"
         fi
