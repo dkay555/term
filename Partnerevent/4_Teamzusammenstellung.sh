@@ -59,22 +59,17 @@ add_link() {
 record_info() {
     local acc="$1" uid1="$2" uid2="$3" uid3="$4" uid4="$5"
     local t=$(date +"%d.%m %H:%M")
-    entry=$(jq -n --arg acc "$acc" \
-        --arg uid1 "$uid1" --arg uid2 "$uid2" --arg uid3 "$uid3" --arg uid4 "$uid4" \
-        --arg t "$t" '{account:$acc, slot1:{user:$uid1,time:$t}, slot2:{user:$uid2,time:$t}, slot3:{user:$uid3,time:$t}, slot4:{user:$uid4,time:$t}}')
-    if [ -f "$info_file" ]; then
-        tmp=$(mktemp)
-        jq --argjson e "$entry" '. + [$e]' "$info_file" > "$tmp" && mv "$tmp" "$info_file"
-    else
-        echo "[$entry]" > "$info_file"
+    if [ ! -f "$info_file" ]; then
+        echo "Account,Slot1 User,Slot1 Time,Slot2 User,Slot2 Time,Slot3 User,Slot3 Time,Slot4 User,Slot4 Time" > "$info_file"
     fi
+    printf '%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$acc" "$uid1" "$t" "$uid2" "$t" "$uid3" "$t" "$uid4" "$t" >> "$info_file"
 }
 
 select_event
 
 kunden_file="${event_dir}Kunden.csv"
 assign_file="${event_dir}Einteilung.csv"
-info_file="${event_dir}Info.json"
+info_file="${event_dir}Info.csv"
 
 # Mapping Kundennamen -> UserID
 declare -A name_uid

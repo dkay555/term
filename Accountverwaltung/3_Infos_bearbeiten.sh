@@ -6,8 +6,8 @@ if command -v termux-toast >/dev/null; then
 fi
 
 # Pfade laut Übersicht.md
-acc_eigene_infos="/storage/emulated/0/MonopolyGo/Accounts/Eigene/Accountinfos.json"
-acc_kunden_infos="/storage/emulated/0/MonopolyGo/Accounts/Kunden/Kundeninfos.json"
+acc_eigene_infos="/storage/emulated/0/MonopolyGo/Accounts/Eigene/Accountinfos.csv"
+acc_kunden_infos="/storage/emulated/0/MonopolyGo/Accounts/Kunden/Kundeninfos.csv"
 
 extract_userid_from_link() {
     local url="$1"
@@ -28,7 +28,7 @@ if [ ! -f "$infos_file" ]; then
     exit 1
 fi
 
-mapfile -t ids < <(jq -r ".[] | .$key" "$infos_file")
+mapfile -t ids < <(tail -n +2 "$infos_file" | cut -d',' -f1)
 
 if [ ${#ids[@]} -eq 0 ]; then
     echo "Keine Einträge gefunden." >&2
@@ -45,18 +45,14 @@ select id in "${ids[@]}" "Abbrechen"; do
     fi
 done
 
-entry=$(jq -r --arg sel "$selected" --arg k "$key" '.[] | select(.[$k]==$sel)' "$infos_file")
+entry=$(grep -m1 -F "^${selected}," "$infos_file")
 if [ -z "$entry" ]; then
     echo "Eintrag nicht gefunden." >&2
     exit 1
 fi
 
 update_eigene() {
-    interneid=$(jq -r '.interneid' <<<"$entry")
-    userid=$(jq -r '.userid' <<<"$entry")
-    datum=$(jq -r '.datum' <<<"$entry")
-    shortlink=$(jq -r '.shortlink' <<<"$entry")
-    notiz=$(jq -r '.notiz' <<<"$entry")
+    IFS=',' read -r interneid userid datum shortlink notiz <<<"$entry"
 
     read -r -p "Interne ID [$interneid]: " val; interneid=${val:-$interneid}
     read -r -p "UserId [$userid]: " val; userid=${val:-$userid}
@@ -64,20 +60,11 @@ update_eigene() {
     read -r -p "Shortlink [$shortlink]: " val; shortlink=${val:-$shortlink}
     read -r -p "Notiz [$notiz]: " val; notiz=${val:-$notiz}
 
-    jq -n --arg interneid "$interneid" --arg userid "$userid" \
-          --arg datum "$datum" --arg shortlink "$shortlink" --arg notiz "$notiz" \
-          '{interneid:$interneid, userid:$userid, datum:$datum, shortlink:$shortlink, notiz:$notiz}'
+    printf '%s,%s,%s,%s,"%s"' "$interneid" "$userid" "$datum" "$shortlink" "$notiz"
 }
 
 update_kunden() {
-    kundenid=$(jq -r '.kundenid' <<<"$entry")
-    nutzername=$(jq -r '.nutzername' <<<"$entry")
-    pass=$(jq -r '.pass' <<<"$entry")
-    autok=$(jq -r '.autok' <<<"$entry")
-    freundschaftslink=$(jq -r '.freundschaftslink' <<<"$entry")
-    code=$(jq -r '.code' <<<"$entry")
-    userid=$(jq -r '.userid // ""' <<<"$entry")
-    notiz=$(jq -r '.notiz' <<<"$entry")
+    IFS=',' read -r kundenid nutzername pass autok freundschaftslink code userid notiz <<<"$entry"
 
     read -r -p "Kunden ID [$kundenid]: " val; kundenid=${val:-$kundenid}
     read -r -p "Nutzername [$nutzername]: " val; nutzername=${val:-$nutzername}
@@ -92,10 +79,7 @@ update_kunden() {
     read -r -p "UserID [$userid]: " val; userid=${val:-$userid}
     read -r -p "Notiz [$notiz]: " val; notiz=${val:-$notiz}
 
-    jq -n --arg kundenid "$kundenid" --arg nutzername "$nutzername" \
-          --arg pass "$pass" --arg autok "$autok" --arg freundschaftslink "$freundschaftslink" \
-          --arg code "$code" --arg userid "$userid" --arg notiz "$notiz" \
-          '{kundenid:$kundenid, nutzername:$nutzername, pass:$pass, autok:$autok, freundschaftslink:$freundschaftslink, code:$code, userid:($userid // empty), notiz:$notiz}'
+    printf '%s,"%s","%s","%s","%s","%s","%s","%s"' "$kundenid" "$nutzername" "$pass" "$autok" "$freundschaftslink" "$code" "$userid" "$notiz"
 }
 
 if [ "$key" = "interneid" ]; then
@@ -104,11 +88,13 @@ else
     new_entry=$(update_kunden)
 fi
 
-# Eintrag in der JSON ersetzen
+# Eintrag in der CSV ersetzen
 if [ -n "$new_entry" ]; then
     tmp=$(mktemp)
-    jq --arg sel "$selected" --arg k "$key" --argjson new "$new_entry" \
-       'map(if .[$k]==$sel then $new else . end)' "$infos_file" > "$tmp" && mv "$tmp" "$infos_file"
+    awk -F',' -v id="$selected" -v newline="$new_entry" 'BEGIN{OFS=","}
+        NR==1{print; next}
+        $1==id{print newline; next}
+        {print}' "$infos_file" > "$tmp" && mv "$tmp" "$infos_file"
     echo "Eintrag aktualisiert."
     if command -v termux-toast >/dev/null; then
         termux-toast "Eintrag aktualisiert"

@@ -5,16 +5,16 @@ if command -v termux-toast >/dev/null; then
     termux-toast "Kopiere Links"
 fi
 
-# Pfad zur Accountinfo-JSON
-acc_eigene_infos="/storage/emulated/0/MonopolyGo/Accounts/Eigene/Accountinfos.json"
+# Pfad zur Accountinfo-CSV
+acc_eigene_infos="/storage/emulated/0/MonopolyGo/Accounts/Eigene/Accountinfos.csv"
 
 if [ ! -f "$acc_eigene_infos" ]; then
     echo "Accountinfo-Datei nicht gefunden." >&2
     exit 1
 fi
 
-# Interne IDs aus JSON einlesen
-mapfile -t interneids < <(jq -r '.[].interneid' "$acc_eigene_infos")
+# Interne IDs aus CSV einlesen
+mapfile -t interneids < <(tail -n +2 "$acc_eigene_infos" | cut -d',' -f1)
 
 if [ ${#interneids[@]} -eq 0 ]; then
     echo "Keine Accounts vorhanden." >&2
@@ -32,7 +32,7 @@ links=()
 for num in $selection; do
     idx=$((num-1))
     if [ $idx -ge 0 ] && [ $idx -lt ${#interneids[@]} ]; then
-        link=$(jq -r --arg iid "${interneids[$idx]}" '.[] | select(.interneid==$iid) | .shortlink' "$acc_eigene_infos")
+        link=$(awk -F',' -v iid="${interneids[$idx]}" '$1==iid {print $4}' "$acc_eigene_infos")
         if [ -n "$link" ] && [ "$link" != "null" ]; then
             links+=("$link")
         fi
